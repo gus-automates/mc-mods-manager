@@ -1,0 +1,11 @@
+services:
+  mc-mods-manager:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      # Mount your Minecraft server directories so the app can scan them.
+      # Add as many as you need, e.g.:
+      # - /home/user/minecraft/server1:/mc/server1
+    restart: unless-stopped
