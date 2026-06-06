@@ -90,8 +90,20 @@ export const modrinth = {
       )}&game_versions=${encodeURIComponent(JSON.stringify([gameVersion]))}`
     ),
 
-  getAllVersions: (slugOrId: string) =>
-    get<ModrinthVersion[]>(`/project/${slugOrId}/versions`),
+  getAllVersions: async (slugOrId: string): Promise<ModrinthVersion[]> => {
+    // /project/{slug}/versions can return 404 on Modrinth for some projects;
+    // fall back to fetching version IDs from the project and resolving them.
+    try {
+      const versions = await get<ModrinthVersion[]>(`/project/${slugOrId}/versions`);
+      if (Array.isArray(versions)) return versions;
+    } catch {
+      // fall through
+    }
+    const project = await get<ModrinthProject>(`/project/${slugOrId}`);
+    if (!project.versions?.length) return [];
+    const ids = project.versions.slice(0, 50);
+    return get<ModrinthVersion[]>(`/versions?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+  },
 
   // Resolve mod metadata from a batch of SHA512 hashes
   resolveHashes: (hashes: string[]) =>
