@@ -7,7 +7,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const loader = searchParams.get("loader") ?? "fabric";
   const version = searchParams.get("version") ?? "";
   try {
-    let versions = await modrinth.getVersions(slug, loader, version);
+    let versions: Awaited<ReturnType<typeof modrinth.getVersions>> = [];
+    try {
+      versions = await modrinth.getVersions(slug, loader, version);
+    } catch {
+      // fall through to unfiltered fetch
+    }
     if (versions.length === 0) {
       versions = await modrinth.getAllVersions(slug);
     }

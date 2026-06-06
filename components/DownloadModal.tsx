@@ -132,9 +132,12 @@ export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownload
         const v: ModVersion[] = await versionsRes.json();
         setVersions(v);
         if (v.length > 0) setChosenVersionId(v[0].id);
+      } else {
+        const body = await versionsRes.json().catch(() => ({}));
+        setError((body as { error?: string }).error ?? "Failed to load versions.");
       }
     } catch {
-      // ignore detail errors
+      setError("Failed to load mod versions. Check your connection.");
     } finally {
       setLoadingDetail(false);
     }

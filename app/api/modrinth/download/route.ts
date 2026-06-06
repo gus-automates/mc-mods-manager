@@ -12,7 +12,15 @@ export async function POST(req: NextRequest) {
 
   try {
     // Get versions and find the requested one (or latest)
-    const versions = await modrinth.getVersions(project_slug, server.loader, server.mc_version);
+    let versions: Awaited<ReturnType<typeof modrinth.getVersions>> = [];
+    try {
+      versions = await modrinth.getVersions(project_slug, server.loader, server.mc_version);
+    } catch {
+      // fall through to unfiltered fetch
+    }
+    if (versions.length === 0) {
+      versions = await modrinth.getAllVersions(project_slug);
+    }
     if (versions.length === 0) {
       return NextResponse.json(
         { error: "No compatible versions found" },
