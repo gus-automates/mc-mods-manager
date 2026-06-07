@@ -42,6 +42,8 @@ interface ModVersion {
   version_number: string;
   version_type: "release" | "beta" | "alpha";
   date_published: string;
+  loaders: string[];
+  game_versions: string[];
   files: { url: string; filename: string; primary: boolean; size: number }[];
 }
 
@@ -131,7 +133,14 @@ export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownload
       if (versionsRes.ok) {
         const v: ModVersion[] = await versionsRes.json();
         setVersions(v);
-        if (v.length > 0) setChosenVersionId(v[0].id);
+        if (v.length > 0) {
+          const best =
+            v.find((ver) => ver.loaders.includes(loader) && ver.game_versions.includes(mcVersion)) ??
+            v.find((ver) => ver.loaders.includes(loader) && ver.version_type === "release") ??
+            v.find((ver) => ver.loaders.includes(loader)) ??
+            v[0];
+          setChosenVersionId(best.id);
+        }
       } else {
         const body = await versionsRes.json().catch(() => ({}));
         setError((body as { error?: string }).error ?? "Failed to load versions.");
@@ -526,12 +535,19 @@ export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownload
                           cursor: "pointer",
                         }}
                       >
-                        {versions.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.version_number} [{v.version_type}]{" "}
-                            {v.files[0] ? `· ${formatBytes(v.files[0].size)}` : ""}
-                          </option>
-                        ))}
+                        {[...versions].sort((a, b) => new Date(b.date_published).getTime() - new Date(a.date_published).getTime()).map((v) => {
+                          const isBest = v.loaders.includes(loader) && v.game_versions.includes(mcVersion);
+                          const mcLabel = v.game_versions.length <= 2
+                            ? v.game_versions.join(", ")
+                            : `${v.game_versions.slice(0, 2).join(", ")} +${v.game_versions.length - 2}`;
+                          const loaderLabel = v.loaders.join(", ");
+                          const sizeLabel = v.files[0] ? ` · ${formatBytes(v.files[0].size)}` : "";
+                          return (
+                            <option key={v.id} value={v.id}>
+                              {isBest ? "★ " : ""}{v.version_number} [{v.version_type}] · MC {mcLabel} · {loaderLabel}{sizeLabel}
+                            </option>
+                          );
+                        })}
                       </select>
                       <ChevronDown
                         size={13}

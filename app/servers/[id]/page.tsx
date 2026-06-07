@@ -54,7 +54,9 @@ export default function ServerPage() {
     try {
       const res = await fetch(`/api/servers/${serverId}/mods/scan`, { method: "POST" });
       if (!res.ok) throw new Error((await res.json()).error);
-      setMods(await res.json());
+      const data = await res.json();
+      setMods(data.mods);
+      if (data.server) setServer(data.server);
       showToast("Mods scanned successfully");
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Scan failed", "err");

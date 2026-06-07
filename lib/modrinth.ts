@@ -101,8 +101,10 @@ export const modrinth = {
     }
     const project = await get<ModrinthProject>(`/project/${slugOrId}`);
     if (!project.versions?.length) return [];
-    const ids = project.versions.slice(0, 50);
-    return get<ModrinthVersion[]>(`/versions?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+    // Take the last 50 IDs (newest) — Modrinth lists oldest-first in project.versions
+    const ids = project.versions.slice(-50);
+    const versions = await get<ModrinthVersion[]>(`/versions?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+    return versions.sort((a, b) => new Date(b.date_published).getTime() - new Date(a.date_published).getTime());
   },
 
   // Resolve mod metadata from a batch of SHA512 hashes

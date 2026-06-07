@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Cpu } from "lucide-react";
 import { Server } from "@/lib/db";
 
 interface Props {
@@ -16,6 +16,8 @@ export function ServerModal({ existing, onClose, onSave }: Props) {
   const [mcVersion, setMcVersion] = useState(existing?.mc_version ?? "26.1.2");
   const [loader, setLoader] = useState(existing?.loader ?? "fabric");
   const [loading, setLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMsg, setDetectMsg] = useState("");
   const [mcVersions, setMcVersions] = useState<string[]>([
     "26.1.2","26.1.1","26.1",
     "1.21.11","1.21.10","1.21.9","1.21.8","1.21.7","1.21.6",
@@ -46,6 +48,27 @@ export function ServerModal({ existing, onClose, onSave }: Props) {
       setLoader(existing.loader);
     }
   }, [existing]);
+
+  async function handleDetect() {
+    if (!path.trim()) return;
+    setDetecting(true);
+    setDetectMsg("");
+    try {
+      const res = await fetch(`/api/servers/detect?path=${encodeURIComponent(path.trim())}`);
+      const data: { mc_version?: string; loader?: string } = await res.json();
+      if (!data.mc_version && !data.loader) {
+        setDetectMsg("Could not detect — set manually");
+      } else {
+        if (data.mc_version) setMcVersion(data.mc_version);
+        if (data.loader) setLoader(data.loader);
+        setDetectMsg(`Detected: ${[data.mc_version, data.loader].filter(Boolean).join(" / ")}`);
+      }
+    } catch {
+      setDetectMsg("Detection failed");
+    } finally {
+      setDetecting(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -127,16 +150,35 @@ export function ServerModal({ existing, onClose, onSave }: Props) {
 
           <div>
             <label style={labelStyle}>Server or Mods Folder Path</label>
-            <input
-              style={inputStyle}
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-              placeholder="/home/mc/server  or  /home/mc/server/mods"
-              required
-            />
-            <p style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 4, lineHeight: 1.4 }}>
-              Point to the server root or the mods folder — the app will auto-detect.
-            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                style={{ ...inputStyle, flex: 1 }}
+                value={path}
+                onChange={(e) => { setPath(e.target.value); setDetectMsg(""); }}
+                placeholder="/home/mc/server  or  /home/mc/server/mods"
+                required
+              />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleDetect}
+                disabled={detecting || !path.trim()}
+                style={{ flexShrink: 0, fontSize: 11 }}
+                title="Auto-detect MC version and loader from this path"
+              >
+                <Cpu size={13} />
+                {detecting ? "…" : "Detect"}
+              </button>
+            </div>
+            {detectMsg ? (
+              <p style={{ fontSize: 11, marginTop: 4, color: detectMsg.startsWith("Detected") ? "var(--accent)" : "var(--text-muted)" }}>
+                {detectMsg}
+              </p>
+            ) : (
+              <p style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 4, lineHeight: 1.4 }}>
+                Point to the server root or the mods folder — the app will auto-detect.
+              </p>
+            )}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
