@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Mod, Server } from "@/lib/db";
+import { Mod, MissingDep, Server } from "@/lib/db";
 import { ModTable } from "@/components/ModTable";
 import { DownloadModal } from "@/components/DownloadModal";
+import { ServerModal } from "@/components/ServerModal";
 import {
   ArrowLeft,
   RefreshCw,
@@ -12,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  Pencil,
 } from "lucide-react";
 
 export default function ServerPage() {
@@ -25,7 +27,9 @@ export default function ServerPage() {
   const [scanning, setScanning] = useState(false);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [fixingDeps, setFixingDeps] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
   function showToast(msg: string, type: "ok" | "err" = "ok") {
@@ -121,6 +125,37 @@ export default function ServerPage() {
     }
   }
 
+  async function handleFixDeps(modId: string, deps: MissingDep[]) {
+    setFixingDeps((prev) => new Set(prev).add(modId));
+    try {
+      await Promise.all(
+        deps.map((dep) =>
+          fetch("/api/modrinth/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ server_id: serverId, project_slug: dep.slug }),
+          })
+        )
+      );
+      await handleScan();
+      showToast(`Installed ${deps.length} missing dep${deps.length !== 1 ? "s" : ""}`);
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "Failed to install deps", "err");
+    } finally {
+      setFixingDeps((prev) => { const s = new Set(prev); s.delete(modId); return s; });
+    }
+  }
+
+  async function handleEditServer(data: { name: string; mods_path: string; mc_version: string; loader: string; env: "client" | "server" | "both" }) {
+    const res = await fetch(`/api/servers/${serverId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) setServer(await res.json());
+    setShowEdit(false);
+  }
+
   if (loading) {
     return (
       <div
@@ -203,6 +238,30 @@ export default function ServerPage() {
           >
             {server?.loader}
           </span>
+
+          <span
+            style={{
+              background: "var(--surface-3)",
+              color: "var(--text-muted)",
+              padding: "2px 7px",
+              borderRadius: 3,
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: "capitalize",
+              border: "1px solid var(--border)",
+            }}
+          >
+            {server?.env === "client" ? "client" : server?.env === "server" ? "server" : "client+server"}
+          </span>
+
+          <button
+            className="btn btn-ghost"
+            onClick={() => setShowEdit(true)}
+            style={{ padding: "3px 6px", marginLeft: 2 }}
+            title="Edit server"
+          >
+            <Pencil size={13} />
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 7 }}>
@@ -274,7 +333,9 @@ export default function ServerPage() {
           onToggle={handleToggle}
           onDelete={handleDelete}
           onUpdate={handleUpdate}
+          onFixDeps={handleFixDeps}
           updating={updating}
+          fixingDeps={fixingDeps}
         />
       </main>
 
@@ -312,8 +373,17 @@ export default function ServerPage() {
           serverId={serverId}
           loader={server.loader}
           mcVersion={server.mc_version}
+          env={server.env ?? "both"}
           onClose={() => setShowDownload(false)}
           onDownloaded={handleScan}
+        />
+      )}
+
+      {showEdit && server && (
+        <ServerModal
+          existing={server}
+          onClose={() => setShowEdit(false)}
+          onSave={handleEditServer}
         />
       )}
 

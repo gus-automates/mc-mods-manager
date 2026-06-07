@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { db, Mod, Server } from "./db";
-import { modrinth } from "./modrinth";
+import { db, Mod, MissingDep, Server } from "./db";
+import { modrinth, ModrinthVersion } from "./modrinth";
 
 function hashFile(filePath: string): string {
   const buf = fs.readFileSync(filePath);
@@ -37,7 +37,7 @@ export async function scanMods(server: Server): Promise<Mod[]> {
 
   // Resolve hashes against Modrinth in one batch call
   const hashes = fileData.map((f) => f.hash);
-  let hashMap: Record<string, { project_id: string; version_number: string; name: string; files: { hashes: { sha512: string }; url: string; filename: string; primary: boolean }[] }> = {};
+  let hashMap: Record<string, ModrinthVersion> = {};
 
   if (hashes.length > 0) {
     try {
@@ -89,6 +89,46 @@ export async function scanMods(server: Server): Promise<Mod[]> {
         : existing?.homepage_url ?? null,
     };
   });
+
+  // Detect missing required dependencies
+  const installedProjectIds = new Set(
+    mods.filter((m) => m.modrinth_id).map((m) => m.modrinth_id!)
+  );
+
+  const missingDepIds = new Set<string>();
+  for (const mod of mods) {
+    if (!mod.sha512) continue;
+    const ver = hashMap[mod.sha512];
+    if (!ver?.dependencies) continue;
+    for (const dep of ver.dependencies) {
+      if (dep.dependency_type === "required" && dep.project_id && !installedProjectIds.has(dep.project_id)) {
+        missingDepIds.add(dep.project_id);
+      }
+    }
+  }
+
+  const missingDepInfo: Record<string, { title: string; slug: string }> = {};
+  await Promise.allSettled(
+    [...missingDepIds].map(async (pid) => {
+      try {
+        const proj = await modrinth.getProject(pid);
+        missingDepInfo[pid] = { title: proj.title, slug: proj.slug };
+      } catch {}
+    })
+  );
+
+  for (const mod of mods) {
+    if (!mod.sha512) { mod.missing_deps = []; continue; }
+    const ver = hashMap[mod.sha512];
+    if (!ver?.dependencies) { mod.missing_deps = []; continue; }
+    mod.missing_deps = ver.dependencies
+      .filter((d) => d.dependency_type === "required" && d.project_id && !installedProjectIds.has(d.project_id))
+      .map((d): MissingDep => ({
+        project_id: d.project_id!,
+        title: missingDepInfo[d.project_id!]?.title ?? d.project_id!,
+        slug: missingDepInfo[d.project_id!]?.slug ?? d.project_id!,
+      }));
+  }
 
   // Persist
   db.upsertMods(mods);

@@ -4,6 +4,7 @@ import path from "path";
 interface DetectResult {
   mc_version?: string;
   loader?: string;
+  env?: "client" | "server";
 }
 
 /** Walk up from a mods folder to the server root, if needed. */
@@ -93,6 +94,16 @@ export function detectServerVersion(serverRootOrModsPath: string): DetectResult 
     const fromVersionsDir = detectMcVersionFromVersionsDir(root);
     if (fromVersionsDir) result.mc_version = fromVersionsDir;
   }
+
+  // 5. Detect environment: server vs client
+  const serverIndicators = ["server.properties", "eula.txt"];
+  const clientIndicators = ["options.txt"];
+  const isServer = serverIndicators.some((f) => fs.existsSync(path.join(root, f)));
+  const isClient =
+    clientIndicators.some((f) => fs.existsSync(path.join(root, f))) ||
+    fs.existsSync(path.join(root, "saves"));
+  if (isServer && !isClient) result.env = "server";
+  else if (isClient && !isServer) result.env = "client";
 
   return result;
 }

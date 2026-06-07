@@ -13,6 +13,13 @@ export interface Server {
   mods_path: string;
   mc_version: string;
   loader: string;
+  env: "client" | "server" | "both";
+}
+
+export interface MissingDep {
+  project_id: string;
+  title: string;
+  slug: string;
 }
 
 export interface Mod {
@@ -31,6 +38,7 @@ export interface Mod {
   update_available: boolean;
   latest_version: string | null;
   homepage_url: string | null;
+  missing_deps?: MissingDep[];
 }
 
 /** Given a path (server root OR mods folder), resolve the mods directory. */

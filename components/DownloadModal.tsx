@@ -64,6 +64,7 @@ interface Props {
   serverId: string;
   loader: string;
   mcVersion: string;
+  env: "client" | "server" | "both";
   onClose: () => void;
   onDownloaded: () => void;
 }
@@ -79,7 +80,7 @@ function formatBytes(n: number) {
   return Math.round(n / 1024) + " KB";
 }
 
-export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownloaded }: Props) {
+export function DownloadModal({ serverId, loader, mcVersion, env, onClose, onDownloaded }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchHit[]>([]);
   const [selected, setSelected] = useState<SearchHit | null>(null);
@@ -105,7 +106,7 @@ export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownload
     setError("");
     try {
       const res = await fetch(
-        `/api/modrinth/search?q=${encodeURIComponent(q)}&loader=${loader}&version=${mcVersion}`
+        `/api/modrinth/search?q=${encodeURIComponent(q)}&loader=${loader}&version=${mcVersion}&env=${env}`
       );
       const data = await res.json();
       const hits: SearchHit[] = data.hits ?? [];
@@ -229,6 +230,21 @@ export function DownloadModal({ serverId, loader, mcVersion, onClose, onDownload
             <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
               {loader} · {mcVersion}
             </span>
+            {env !== "both" && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 7px",
+                borderRadius: 3,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                background: "var(--blue-dim)",
+                color: "var(--blue)",
+                border: "1px solid rgba(96,165,250,0.2)",
+              }}>
+                {env === "server" ? "Server-side only" : "Client-side only"}
+              </span>
+            )}
             <button className="btn btn-ghost" onClick={onClose} style={{ padding: 4 }}>
               <X size={15} />
             </button>

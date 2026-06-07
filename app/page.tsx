@@ -25,7 +25,7 @@ export default function Dashboard() {
     setLoading(false);
   }
 
-  async function handleAdd(data: { name: string; mods_path: string; mc_version: string; loader: string }) {
+  async function handleAdd(data: { name: string; mods_path: string; mc_version: string; loader: string; env: "client" | "server" | "both" }) {
     await fetch("/api/servers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,7 +35,7 @@ export default function Dashboard() {
     fetchServers();
   }
 
-  async function handleEdit(data: { name: string; mods_path: string; mc_version: string; loader: string }) {
+  async function handleEdit(data: { name: string; mods_path: string; mc_version: string; loader: string; env: "client" | "server" | "both" }) {
     if (!editing) return;
     await fetch(`/api/servers/${editing.id}`, {
       method: "PATCH",

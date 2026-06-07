@@ -12,7 +12,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, mods_path, mc_version, loader } = body;
+  const { name, mods_path, mc_version, loader, env } = body;
 
   if (!name || !mods_path || !mc_version) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     mods_path: resolvedPath,
     mc_version,
     loader: loader ?? "fabric",
+    env: env ?? "both",
   });
 
   return NextResponse.json(server, { status: 201 });

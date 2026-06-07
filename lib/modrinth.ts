@@ -19,6 +19,13 @@ export interface ModrinthProject {
   wiki_url?: string;
 }
 
+export interface ModrinthDependency {
+  version_id: string | null;
+  project_id: string | null;
+  file_name: string | null;
+  dependency_type: "required" | "optional" | "incompatible" | "embedded";
+}
+
 export interface ModrinthVersion {
   id: string;
   project_id: string;
@@ -28,6 +35,7 @@ export interface ModrinthVersion {
   loaders: string[];
   game_versions: string[];
   date_published: string;
+  dependencies: ModrinthDependency[];
   files: {
     hashes: { sha512: string; sha1: string };
     url: string;
@@ -69,16 +77,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const modrinth = {
-  search: (query: string, loader: string, gameVersion: string, limit = 20) =>
-    get<ModrinthSearchResult>(
-      `/search?query=${encodeURIComponent(query)}&limit=${limit}&facets=${encodeURIComponent(
-        JSON.stringify([
-          ["project_type:mod"],
-          [`categories:${loader}`],
-          [`versions:${gameVersion}`],
-        ])
-      )}`
-    ),
+  search: (query: string, loader: string, gameVersion: string, env?: "client" | "server" | "both", limit = 20) => {
+    const facets: string[][] = [
+      ["project_type:mod"],
+      [`categories:${loader}`],
+      [`versions:${gameVersion}`],
+    ];
+    if (env === "server") facets.push(["server_side:required", "server_side:optional"]);
+    else if (env === "client") facets.push(["client_side:required", "client_side:optional"]);
+    return get<ModrinthSearchResult>(
+      `/search?query=${encodeURIComponent(query)}&limit=${limit}&facets=${encodeURIComponent(JSON.stringify(facets))}`
+    );
+  },
 
   getProject: (slugOrId: string) =>
     get<ModrinthProject>(`/project/${slugOrId}`),

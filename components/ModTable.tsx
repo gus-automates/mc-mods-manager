@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Mod } from "@/lib/db";
+import { Mod, MissingDep } from "@/lib/db";
 import Image from "next/image";
 import {
   Trash2,
@@ -15,6 +15,7 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
+  PackagePlus,
 } from "lucide-react";
 
 interface Props {
@@ -22,7 +23,9 @@ interface Props {
   onToggle: (modIds: string[]) => void;
   onDelete: (modIds: string[]) => void;
   onUpdate: (modId: string) => void;
+  onFixDeps: (modId: string, deps: MissingDep[]) => void;
   updating: Set<string>;
+  fixingDeps: Set<string>;
 }
 
 type SortCol = "name" | "version" | "last_modified" | "provider" | "enabled";
@@ -42,7 +45,7 @@ function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: Sor
   return dir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />;
 }
 
-export function ModTable({ mods, onToggle, onDelete, onUpdate, updating }: Props) {
+export function ModTable({ mods, onToggle, onDelete, onUpdate, onFixDeps, updating, fixingDeps }: Props) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<string | null>(null);
@@ -134,7 +137,7 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, updating }: Props
     setSelected(new Set());
   }
 
-  const colGrid = "34px 40px 1fr 120px 155px 80px 72px";
+  const colGrid = "34px 40px 1fr 110px 150px 80px 130px";
 
   const headerCellStyle = (col: SortCol): React.CSSProperties => ({
     display: "flex",
@@ -280,6 +283,14 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, updating }: Props
                       Update
                     </span>
                   )}
+                  {(mod.missing_deps?.length ?? 0) > 0 && (
+                    <span
+                      title={`Missing required deps:\n${mod.missing_deps!.map((d) => d.title).join("\n")}`}
+                      style={{ background: "var(--orange-dim)", color: "var(--orange)", fontSize: 9, padding: "1px 5px", borderRadius: 2, fontWeight: 700, border: "1px solid rgba(251,146,60,0.25)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0, cursor: "default" }}
+                    >
+                      ! {mod.missing_deps!.length} dep{mod.missing_deps!.length !== 1 ? "s" : ""} missing
+                    </span>
+                  )}
                 </div>
                 <div style={{ color: "var(--text-muted)", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" }}>
                   {mod.filename}
@@ -287,7 +298,7 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, updating }: Props
               </div>
 
               {/* Version */}
-              <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{mod.version ?? "—"}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={mod.version ?? undefined}>{mod.version ?? "—"}</div>
 
               {/* Last Modified */}
               <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{formatDate(mod.last_modified)}</div>
@@ -315,6 +326,20 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, updating }: Props
                     {updating.has(mod.id)
                       ? <RefreshCw size={13} color="var(--yellow)" style={{ animation: "spin 1s linear infinite" }} />
                       : <ArrowUpCircle size={13} color="var(--yellow)" />}
+                  </button>
+                )}
+
+                {(mod.missing_deps?.length ?? 0) > 0 && (
+                  <button
+                    onClick={() => onFixDeps(mod.id, mod.missing_deps!)}
+                    disabled={fixingDeps.has(mod.id)}
+                    className="btn btn-ghost"
+                    style={{ padding: "3px 5px" }}
+                    title={`Install ${mod.missing_deps!.length} missing dep${mod.missing_deps!.length !== 1 ? "s" : ""}`}
+                  >
+                    {fixingDeps.has(mod.id)
+                      ? <RefreshCw size={13} color="var(--orange)" style={{ animation: "spin 1s linear infinite" }} />
+                      : <PackagePlus size={13} color="var(--orange)" />}
                   </button>
                 )}
 
