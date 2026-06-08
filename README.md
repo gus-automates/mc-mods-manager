@@ -12,12 +12,18 @@ manually, and guessing which version is compatible. MC Mods Manager centralises 
 folder, see every mod at a glance, check for updates with one click, and download new mods directly
 from Modrinth — without ever leaving the browser.
 
+## Screenshots
+
+![Dashboard](screenshots/main.png)
+
+![Download Mods](screenshots/downloads.png)
+
 ## Installation
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mc-mods-manager.git
+git clone https://github.com/gus-automates/mc-mods-manager.git
 cd mc-mods-manager
 ```
 
@@ -39,7 +45,7 @@ Open **http://localhost:3000** in your browser.
 
 ## Usage
 
-1. Click **Add Server** and enter a name, the path to your mods folder (e.g. `/mc/server1/mods`), Minecraft version, and mod loader.
+1. Click **Add Server** and enter a name and the path to your mods folder (e.g. `/mc/server1/mods`). MC version and loader are detected automatically.
 2. Click **Scan** to detect all installed mods and match them against Modrinth.
 3. Click **Check Updates** to see which mods have newer versions available.
 4. Use **Download Mod** to search Modrinth and install a mod directly to the server folder.
@@ -49,13 +55,21 @@ Open **http://localhost:3000** in your browser.
 **Done**
 - ✅ Manage multiple Minecraft servers from a single dashboard
 - ✅ Auto-scan mods folder and identify mods via Modrinth (SHA-512 hash matching)
+- ✅ Auto-detect Minecraft version and mod loader from the server directory
 - ✅ One-click update check against Modrinth for all installed mods
 - ✅ Download & install mods directly from Modrinth search
 - ✅ Enable / disable mods without deleting them (`.jar` ↔ `.jar.disabled`)
 - ✅ Bulk select, delete, and toggle mods
+- ✅ Missing dependency detection with one-click install
+- ✅ Supports Fabric, Forge, NeoForge, and Quilt
 - ✅ Docker-ready with persistent data volume
-- ✅ Supports Fabric, Forge, and other loaders
 
 **Planned**
 - ⬜ CurseForge mod support
-- ⬜ Mod dependency resolution
+- ⬜ One-click update all outdated mods at once
+
+## Contributing
+Issues and PRs are welcome. Please open an issue before submitting large changes.
+
+## License
+[MIT](https://opensource.org/licenses/MIT)
