@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { modrinth } from "@/lib/modrinth";
 
 export async function POST(req: NextRequest) {
-  const { server_id, project_slug, version_id } = await req.json();
+  const { server_id, project_slug, version_id, replace_filename } = await req.json();
 
   const server = db.getServer(server_id);
   if (!server) return NextResponse.json({ error: "Server not found" }, { status: 404 });
@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await res.arrayBuffer());
     const destPath = path.join(server.mods_path, primaryFile.filename);
     fs.writeFileSync(destPath, buffer);
+
+    // If this download is replacing an older version with a different
+    // filename, remove the old file so it doesn't linger as a duplicate.
+    // Must happen after the new file is written, and only when the names
+    // differ — otherwise we'd delete the file we just wrote.
+    if (replace_filename && replace_filename !== primaryFile.filename) {
+      const oldPath = path.join(server.mods_path, replace_filename);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
 
     return NextResponse.json({ ok: true, filename: primaryFile.filename });
   } catch (e: unknown) {

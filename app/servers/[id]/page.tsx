@@ -60,8 +60,10 @@ export default function ServerPage() {
       if (!res.ok) throw new Error((await res.json()).error);
       const data = await res.json();
       setMods(data.mods);
+      const versionChanged = data.server && data.server.mc_version !== server?.mc_version;
       if (data.server) setServer(data.server);
       showToast("Mods scanned successfully");
+      if (versionChanged) await handleCheckUpdates();
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Scan failed", "err");
     } finally {
@@ -112,16 +114,70 @@ export default function ServerPage() {
       const dlRes = await fetch("/api/modrinth/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ server_id: serverId, project_slug: mod.modrinth_slug }),
+        body: JSON.stringify({
+          server_id: serverId,
+          project_slug: mod.modrinth_slug,
+          replace_filename: mod.filename,
+        }),
       });
       if (!dlRes.ok) throw new Error((await dlRes.json()).error);
-      await fetch(`/api/mods/${modId}`, { method: "DELETE" });
       await handleScan();
       showToast(`${mod.name} updated`);
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Update failed", "err");
     } finally {
       setUpdating((prev) => { const s = new Set(prev); s.delete(modId); return s; });
+    }
+  }
+
+  async function handleBulkUpdate(modIds: string[]) {
+    const targets = mods.filter(
+      (m) => modIds.includes(m.id) && m.update_available && m.modrinth_slug
+    );
+    if (targets.length === 0) {
+      showToast("No updatable mods selected", "err");
+      return;
+    }
+    setUpdating((prev) => {
+      const s = new Set(prev);
+      targets.forEach((m) => s.add(m.id));
+      return s;
+    });
+    let ok = 0;
+    let failed = 0;
+    try {
+      await Promise.all(
+        targets.map(async (mod) => {
+          try {
+            const dlRes = await fetch("/api/modrinth/download", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                server_id: serverId,
+                project_slug: mod.modrinth_slug,
+                replace_filename: mod.filename,
+              }),
+            });
+            if (!dlRes.ok) throw new Error((await dlRes.json()).error);
+            ok++;
+          } catch {
+            failed++;
+          }
+        })
+      );
+      await handleScan();
+      showToast(
+        failed > 0
+          ? `Updated ${ok} mod${ok !== 1 ? "s" : ""}, ${failed} failed`
+          : `Updated ${ok} mod${ok !== 1 ? "s" : ""}`,
+        failed > 0 ? "err" : "ok"
+      );
+    } finally {
+      setUpdating((prev) => {
+        const s = new Set(prev);
+        targets.forEach((m) => s.delete(m.id));
+        return s;
+      });
     }
   }
 
@@ -152,7 +208,14 @@ export default function ServerPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (res.ok) setServer(await res.json());
+    if (res.ok) {
+      const updated = await res.json();
+      const versionChanged = updated.mc_version !== server?.mc_version;
+      setServer(updated);
+      setShowEdit(false);
+      if (versionChanged) await handleCheckUpdates();
+      return;
+    }
     setShowEdit(false);
   }
 
@@ -333,6 +396,7 @@ export default function ServerPage() {
           onToggle={handleToggle}
           onDelete={handleDelete}
           onUpdate={handleUpdate}
+          onBulkUpdate={handleBulkUpdate}
           onFixDeps={handleFixDeps}
           updating={updating}
           fixingDeps={fixingDeps}

@@ -69,6 +69,10 @@ export async function scanMods(server: Server): Promise<Mod[]> {
     const existing = existingByFilename[f.filename];
     const stat = fs.statSync(f.fullPath);
 
+    // If the file on disk changed (e.g. a mod was updated in place under the
+    // same filename), the cached update flags from the old version are stale.
+    const fileChanged = !!existing?.sha512 && existing.sha512 !== f.hash;
+
     return {
       id: existing?.id ?? crypto.randomUUID(),
       server_id: server.id,
@@ -82,8 +86,8 @@ export async function scanMods(server: Server): Promise<Mod[]> {
       last_modified: stat.mtime.toISOString(),
       provider: versionInfo ? "Modrinth" : (existing?.provider ?? "Local"),
       sha512: f.hash,
-      update_available: existing?.update_available ?? false,
-      latest_version: existing?.latest_version ?? null,
+      update_available: fileChanged ? false : (existing?.update_available ?? false),
+      latest_version: fileChanged ? null : (existing?.latest_version ?? null),
       homepage_url: projectInfo?.slug
         ? `https://modrinth.com/mod/${projectInfo.slug}`
         : existing?.homepage_url ?? null,

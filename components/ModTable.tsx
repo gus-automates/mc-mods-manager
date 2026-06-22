@@ -23,6 +23,7 @@ interface Props {
   onToggle: (modIds: string[]) => void;
   onDelete: (modIds: string[]) => void;
   onUpdate: (modId: string) => void;
+  onBulkUpdate: (modIds: string[]) => void;
   onFixDeps: (modId: string, deps: MissingDep[]) => void;
   updating: Set<string>;
   fixingDeps: Set<string>;
@@ -45,7 +46,7 @@ function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: Sor
   return dir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />;
 }
 
-export function ModTable({ mods, onToggle, onDelete, onUpdate, onFixDeps, updating, fixingDeps }: Props) {
+export function ModTable({ mods, onToggle, onDelete, onUpdate, onBulkUpdate, onFixDeps, updating, fixingDeps }: Props) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<string | null>(null);
@@ -137,6 +138,12 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, onFixDeps, updati
     setSelected(new Set());
   }
 
+  const updatableSelected = selectedMods.filter((m) => m.update_available && m.modrinth_slug);
+  const updatingSelected = updatableSelected.some((m) => updating.has(m.id));
+  function bulkUpdate() {
+    if (updatableSelected.length) onBulkUpdate(updatableSelected.map((m) => m.id));
+  }
+
   const colGrid = "34px 40px 1fr 110px 150px 80px 130px";
 
   const headerCellStyle = (col: SortCol): React.CSSProperties => ({
@@ -178,6 +185,14 @@ export function ModTable({ mods, onToggle, onDelete, onUpdate, onFixDeps, updati
               {selectionCount} selected
             </span>
             <div style={{ width: 1, height: 14, background: "var(--border)" }} />
+            {updatableSelected.length > 0 && (
+              <button className="btn btn-ghost" onClick={bulkUpdate} disabled={updatingSelected} style={{ padding: "2px 7px", fontSize: 11 }} title={`Update ${updatableSelected.length} mod${updatableSelected.length !== 1 ? "s" : ""}`}>
+                {updatingSelected
+                  ? <RefreshCw size={13} color="var(--yellow)" style={{ animation: "spin 1s linear infinite" }} />
+                  : <ArrowUpCircle size={13} color="var(--yellow)" />}
+                <span style={{ color: "var(--yellow)" }}>Update {updatableSelected.length}</span>
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={bulkEnable} style={{ padding: "2px 7px", fontSize: 11 }} title="Enable selected">
               <ToggleRight size={13} color="var(--accent)" /> Enable
             </button>
