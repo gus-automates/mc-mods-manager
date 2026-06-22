@@ -63,10 +63,10 @@ Open **http://localhost:3000** in your browser.
 - ✅ Missing dependency detection with one-click install
 - ✅ Supports Fabric, Forge, NeoForge, and Quilt
 - ✅ Docker-ready with persistent data volume
+- ✅ One-click update all outdated mods at once
 
 **Planned**
 - ⬜ CurseForge mod support
-- ⬜ One-click update all outdated mods at once
 
 ## Contributing
 Issues and PRs are welcome. Please open an issue before submitting large changes.
