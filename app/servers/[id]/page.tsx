@@ -60,10 +60,7 @@ export default function ServerPage() {
       if (!res.ok) throw new Error((await res.json()).error);
       const data = await res.json();
       setMods(data.mods);
-      const versionChanged = data.server && data.server.mc_version !== server?.mc_version;
-      if (data.server) setServer(data.server);
       showToast("Mods scanned successfully");
-      if (versionChanged) await handleCheckUpdates();
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Scan failed", "err");
     } finally {
